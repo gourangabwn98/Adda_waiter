@@ -331,23 +331,19 @@ export default function CartPage() {
           <span style={{ color: "#555", fontSize: 14 }}>Subtotal</span>
           <span style={{ fontWeight: 800, fontSize: 18 }}>₹{subtotal}</span>
         </div>
-       <button
-  style={{
+       <button onClick={handlePlaceOrder} disabled={loading} style={{
     position: "fixed",
     bottom: 70, // 👈 key fix
     width: "100%",
     maxWidth: 420,
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#fff",
+    background: loading ? "#ccc" : PINK, color: "#fff",
     borderTop: "1px solid #eee",
     padding: "14px 20px 20px",
     boxShadow: "0 -4px 20px rgba(0,0,0,.08)",
     zIndex: 50,
-  }}
->
-          {loading ? "Placing…" : "🖨️  Place Order & Print KOT"}
-        </button>
+  }} > {loading ? "Placing…" : "🖨️ Place Order & Print KOT"} </button>
       </div>
 
       <BottomNav cartCount={totalQty} />
