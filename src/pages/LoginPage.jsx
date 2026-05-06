@@ -246,6 +246,8 @@ export default function LoginPage() {
                   ref={refs[i]}
                   value={v}
                   maxLength={1}
+                   inputMode="numeric"     // ✅ mobile keyboard numeric
+  pattern="[0-9]*"        // ✅ hint for browsers
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKey(i, e)}
                   style={{
