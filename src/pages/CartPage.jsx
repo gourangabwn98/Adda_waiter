@@ -62,20 +62,20 @@ export default function CartPage() {
     try {
       setLoading(true);
       const payload = {
-        tableId: table._id || table.id,
-        tableNo: tableNo,
-        items: cart.map((i) => ({
-          menuItem: i._id,
-          name: i.name,
-          quantity: i.qty,
-          price: i.price,
-          notes: i.notes || "",
-          category: i.category || "",
-        })),
-        notes: orderNote,
-        waiterName: user?.waiterName || "Waiter",
-        totalAmount: subtotal,
-      };
+  tableId: table._id || table.id,
+  tableNo: tableNo,
+  items: cart.map((i) => ({
+    menuItemId: i._id,   // ✅ FIXED
+    name: i.name,
+    qty: i.qty,          // ✅ FIXED
+    price: i.price,
+    notes: i.notes || "",
+    category: i.category || "",
+  })),
+  notes: orderNote,
+  waiterName: user?.waiterName || "Waiter",
+  totalAmount: subtotal,
+};
 
       const { data } = await placeOrder(payload);
       const orderId = data?.order?._id || data?._id || data?.orderId || "N/A";
