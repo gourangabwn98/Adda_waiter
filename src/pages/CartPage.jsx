@@ -81,13 +81,13 @@ export default function CartPage() {
       const orderId = data?.order?._id || data?._id || data?.orderId || "N/A";
 
       /* Print KOTs */
-      printKOTs({
-        cart: cart.map((i) => ({ ...i, qty: i.qty })),
-        tableNo,
-        orderId,
-        waiterName: user?.waiterName || "Waiter",
-        cafeName: "ADDA CAFE",
-      });
+      // printKOTs({
+      //   cart: cart.map((i) => ({ ...i, qty: i.qty })),
+      //   tableNo,
+      //   orderId,
+      //   waiterName: user?.waiterName || "Waiter",
+      //   cafeName: "ADDA CAFE",
+      // });
 
       toast.success("Order placed! KOT printing…");
       saveCart([]);
