@@ -649,6 +649,7 @@ function NoteModal({ item, existing, onSave, onClose }) {
           </button>
         </div>
       </div>
+      
     </div>
   );
 }

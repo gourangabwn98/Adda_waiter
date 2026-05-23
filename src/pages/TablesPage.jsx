@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getTables } from "../services/tableService.js";
 import { getAllOrders, getAllInvoices } from "../services/adminService.js";
+import BottomNav from "../components/BottomNav.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import toast from "react-hot-toast";
 
@@ -336,6 +337,7 @@ export default function WaiterTablesPage() {
           Counter &amp; Entrance
         </div>
       </div>
+       <BottomNav />
     </div>
   );
 }
