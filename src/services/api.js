@@ -9,10 +9,13 @@ api.interceptors.request.use((cfg) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem("waiterUser");
-      window.location.href = "/";
-    }
+   if (err.response?.status === 401) {
+  localStorage.removeItem("waiterUser");
+
+  if (window.location.pathname !== "/") {
+    window.location.href = "/";
+  }
+}
     return Promise.reject(err);
   },
 );

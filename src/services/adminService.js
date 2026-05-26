@@ -32,11 +32,11 @@ export const regenerateQR = (tableNo) =>
 
 //for chef
 
-export const getAllChefs = () => api.get("admin/chefs");
-export const createChef = (data) => api.post("admin/chefs", data);
-export const updateChefStatus = (id, status) =>
-  api.patch(`admin/chefs/${id}/status`, { status });
-export const deleteChef = (id) => api.delete(`admin/chefs/${id}`);
+export const getAllChefs = () => api.get("/admin/chefs");
+// export const createChef = (data) => api.post("admin/chefs", data);
+// export const updateChefStatus = (id, status) =>
+//   api.patch(`admin/chefs/${id}/status`, { status });
+// export const deleteChef = (id) => api.delete(`admin/chefs/${id}`);
 
 //admin profile
 
