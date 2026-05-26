@@ -25,7 +25,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [chefs,   setChefs]   = useState([]);
 
-  const refs = Array.from({ length: 6 }, () => useRef(null));
+  // const refs = Array.from({ length: 6 }, () => useRef(null));
+  const ref0 = useRef(null);
+const ref1 = useRef(null);
+const ref2 = useRef(null);
+const ref3 = useRef(null);
+const ref4 = useRef(null);
+const ref5 = useRef(null);
+const refs = [ref0, ref1, ref2, ref3, ref4, ref5];
 
   // ── Fetch chefs ────────────────────────────────────────────────────────────
   useEffect(() => {
