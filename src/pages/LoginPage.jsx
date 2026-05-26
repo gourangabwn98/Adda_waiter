@@ -5,6 +5,7 @@ import { auth } from "../services/firebase.js";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { useAuth } from "../hooks/useAuth.js";
 import toast from "react-hot-toast";
+import { getAllChefs } from "../services/adminService.js";
 
 const PINK = "#e91e8c";
 const BG = "#1a1a2e";
@@ -21,7 +22,19 @@ export default function LoginPage() {
   const [otp, setOtp] = useState(Array(6).fill(""));
   const [timer, setTimer] = useState(120);
   const [loading, setLoading] = useState(false);
+  const [chefs, setChefs] = useState([]);
   const refs = Array.from({ length: 6 }, () => useRef(null));
+
+
+ useEffect(() => {
+  getAllChefs()
+    .then(res => {
+      // handle all common response shapes
+      const data = res.data?.data || res.data?.chefs || res.data;
+      setChefs(Array.isArray(data) ? data : []);
+    })
+    .catch(() => setChefs([]));
+}, []);
 
   useEffect(() => {
     if (step !== "otp") return;
@@ -183,22 +196,34 @@ export default function LoginPage() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your name" style={inp} />
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ color: "#888", fontSize: 12, display: "block", marginBottom: 6 }}>Phone Number</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <div style={{ ...inp, width: "auto", padding: "13px 12px", display: "flex", gap: 6, alignItems: "center" }}>
-                  🇮🇳 <span style={{ color: "#aaa" }}>+91</span>
-                </div>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                  maxLength={10}
-                  placeholder="123 456 7890"
-                  type="tel"
-                  style={inp}
-                />
-              </div>
-            </div>
+           <div style={{ marginBottom: 24 }}>
+  <label style={{ color: "#888", fontSize: 12, display: "block", marginBottom: 6 }}>Select Your Account</label>
+  <select
+    value={phone}
+    onChange={(e) => {
+      const selected = chefs.find(c => c.phone === e.target.value);
+      setPhone(e.target.value);
+      if (selected && !name.trim()) setName(selected.name);
+    }}
+    style={{
+      ...inp,
+      cursor: "pointer",
+      appearance: "none",
+      WebkitAppearance: "none",
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "right 14px center",
+      paddingRight: 38,
+    }}
+  >
+    <option value="" disabled>— Select waiter / chef —</option>
+    {chefs.map(c => (
+      <option key={c._id} value={c.phone}>
+        {c.name}  •  +91 {c.phone}
+      </option>
+    ))}
+  </select>
+</div>
 
             <button
               onClick={handleSend}
