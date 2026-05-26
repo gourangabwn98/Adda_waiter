@@ -34,15 +34,21 @@ const ref4 = useRef(null);
 const ref5 = useRef(null);
 const refs = [ref0, ref1, ref2, ref3, ref4, ref5];
 
-  // ── Fetch chefs ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    getAllChefs()
-      .then(res => {
-        const data = res.data?.data || res.data?.chefs || res.data;
-        setChefs(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setChefs([]));
-  }, []);
+useEffect(() => {
+  console.log("Fetching chefs...");
+
+  getAllChefs()
+    .then((res) => {
+      console.log("API Response:", res);
+
+      const data = res.data?.data || res.data?.chefs || res.data;
+      setChefs(Array.isArray(data) ? data : []);
+    })
+    .catch((err) => {
+      console.error("API Error:", err);
+      setChefs([]);
+    });
+}, []);
 
   // ── OTP timer ──────────────────────────────────────────────────────────────
   useEffect(() => {
