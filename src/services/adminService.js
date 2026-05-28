@@ -32,7 +32,7 @@ export const regenerateQR = (tableNo) =>
 
 //for chef
 
-export const getAllChefs = () => api.get("/admin/chefs");
+export const getAllChefs = () => api.get("admin/chefs");
 // export const createChef = (data) => api.post("admin/chefs", data);
 // export const updateChefStatus = (id, status) =>
 //   api.patch(`admin/chefs/${id}/status`, { status });

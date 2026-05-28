@@ -253,7 +253,7 @@ export default function WaiterTablesPage() {
           >
             📋 Orders
           </button>
-          <button
+          {/* <button
             onClick={() => { logout(); nav("/"); }}
             style={{
               background: "rgba(255,255,255,.15)", border: "none", color: WHITE,
@@ -261,7 +261,7 @@ export default function WaiterTablesPage() {
             }}
           >
             Exit
-          </button>
+          </button> */}
         </div>
       </div>
 
