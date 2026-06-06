@@ -447,46 +447,37 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
 
   // Generate merged invoice → mark completed → print
   const handlePrintBill = async () => {
-    try {
-      setPrinting(true);
+  try {
+    setPrinting(true);
 
-      // Merge all order IDs and items
-      const orderIds = orders.map((o) => o._id);
-      const userId = orders[0]?.user?._id || orders[0]?.user || null;
+    const orderIds = orders.map((o) => o._id);
+    const userId = orders[0]?.user?._id || orders[0]?.user || null;
 
-      // Step 1 — generate invoice with all orders merged
-      const invoiceRes = await api.post("invoices/generate", {
-        orders: orderIds,
-        items: mergedItems,
-        userId,
-        isGuest: !userId,
-        tableNo: table.tableNo,
-      });
-      const inv = invoiceRes.data;
+    // Step 1 — generate invoice
+    const invoiceRes = await api.post("invoices/generate", {
+      orders: orderIds,
+      items: mergedItems,
+      userId,
+      isGuest: !userId,
+      tableNo: table.tableNo,
+    });
+    const inv = invoiceRes.data;
 
-      // Step 2 — mark invoice completed (auto-completes all orders in backend)
-      await updateInvoiceStatus(inv._id, "completed");
+    // Step 2 — mark completed → this triggers io.emit('bill-print') in backend
+    await updateInvoiceStatus(inv._id, "completed");
 
-      toast.success("Bill settled!");
+    // ✅ That's it. The print service handles the thermal print.
+    // ✅ Remove the printBill(...) call entirely — no window.print()
+    toast.success("Bill sent to printer!");
 
-      // Step 3 — print
-      printBill({
-        table,
-        mergedItems,
-        subtotal,
-        tax,
-        total: inv.total || total,
-        invoiceId: inv._id,
-      });
-
-      await onRefresh();
-      onClose();
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to print bill");
-    } finally {
-      setPrinting(false);
-    }
-  };
+    await onRefresh();
+    onClose();
+  } catch (err) {
+    toast.error(err?.response?.data?.message || "Failed to print bill");
+  } finally {
+    setPrinting(false);
+  }
+};
 
   return (
     <div className="modal-overlay" onClick={onClose}>
