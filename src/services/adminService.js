@@ -8,8 +8,10 @@ export const getAllUsers = (params) => api.get("/admin/users", { params });
 export const deleteUser = (id) => api.delete(`/admin/users/${id}`);
 // src/services/adminService.js
 export const getAllInvoices = () => api.get("admin/invoices/all");
+// export const updateInvoiceStatus = (id, status) =>
+//   api.patch(`/admin/invoices/${id}/status`, { status });
 export const updateInvoiceStatus = (id, status) =>
-  api.patch(`/admin/invoices/${id}/status`, { status });
+  api.patch(`/invoices/${id}/status`, { status });
 
 // ── NEW TABLE MANAGEMENT APIs ─────────────────────────────────────
 // export const getAllTables = () => api.get("admin/tables");
