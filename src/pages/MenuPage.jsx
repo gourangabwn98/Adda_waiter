@@ -471,7 +471,7 @@ export default function MenuPage() {
       </div>
 
       {/* Menu items */}
-      <div style={{ flex: 1, padding: "0 16px 100px" }}>
+     <div style={{ flex: 1, padding: "0 16px 180px" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: "60px", color: "#aaa" }}>
             Loading menu…
@@ -509,25 +509,25 @@ export default function MenuPage() {
 
       {/* Cart bar */}
       {totalItems > 0 && (
-        <div
-          onClick={() => nav("/cart")}
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "100%",
-        
-            background: PINK,
-            padding: "16px 20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            cursor: "pointer",
-            boxShadow: `0 -4px 20px ${PINK}55`,
-            zIndex: 20,
-          }}
-        >
+       <div
+    onClick={() => nav("/cart")}
+    style={{
+      position: "fixed",
+      bottom: 64,           // ← was 0, now sits above BottomNav
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "min(100%, 800px)",
+      maxWidth: "100%",
+      background: PINK,
+      padding: "16px 20px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      cursor: "pointer",
+      boxShadow: `0 -4px 20px ${PINK}55`,
+      zIndex: 20,
+    }}
+  >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
@@ -560,13 +560,18 @@ export default function MenuPage() {
 
       {/* Note modal */}
       {noteModal && (
-        <NoteModal
+       <NoteModal
           item={noteModal}
           existing={cart.find((c) => c._id === noteModal._id)?.notes || ""}
           onSave={saveNote}
           onClose={() => setNoteModal(null)}
         />
       )}
+
+      {/* ← ADD THIS */}
+      <BottomNav />
+     
+      
     </div>
   );
 }
@@ -592,7 +597,7 @@ function NoteModal({ item, existing, onSave, onClose }) {
           borderRadius: "20px 20px 0 0",
           padding: 24,
           width: "100%",
-          maxWidth: 420,
+          maxWidth: 700,
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
@@ -652,6 +657,7 @@ function NoteModal({ item, existing, onSave, onClose }) {
         </div>
         
       </div>
+      
       
     </div>
   );
