@@ -6,6 +6,7 @@ import TablesPage from "./pages/TablesPage.jsx";
 import MenuPage from "./pages/MenuPage.jsx";
 import CartPage from "./pages/CartPage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
+import "./App.css";
 
 const Guard = ({ children }) => {
   const { user } = useAuth();
@@ -15,24 +16,8 @@ const Guard = ({ children }) => {
 export default function App() {
   return (
     <BrowserRouter>
-      <div
-        style={{
-          fontFamily: "'Segoe UI',sans-serif",
-          background: "#f0f0f0",
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: 420,
-            minHeight: "100vh",
-            background: "#fff",
-            position: "relative",
-            boxShadow: "0 0 30px rgba(0,0,0,.1)",
-          }}
-        >
+      <div className="app-shell">
+        <div className="app-container">
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route

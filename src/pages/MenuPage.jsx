@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMenu, getCategories } from "../services/menuService.js";
 import toast from "react-hot-toast";
+import BottomNav from "../components/BottomNav.jsx";
 
 const PINK = "#e91e8c";
 const WHITE = "#fff";
@@ -515,7 +516,8 @@ export default function MenuPage() {
             bottom: 0,
             left: "50%",
             transform: "translateX(-50%)",
-            width: 420,
+            width: "100%",
+        
             background: PINK,
             padding: "16px 20px",
             display: "flex",
@@ -648,6 +650,7 @@ function NoteModal({ item, existing, onSave, onClose }) {
             Save Note
           </button>
         </div>
+        
       </div>
       
     </div>

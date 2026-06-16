@@ -335,7 +335,7 @@ export default function CartPage() {
     position: "fixed",
     bottom: 70, // 👈 key fix
     width: "100%",
-    maxWidth: 420,
+    // maxWidth: 420,
     left: "50%",
     transform: "translateX(-50%)",
     background: loading ? "#ccc" : PINK, color: "#fff",

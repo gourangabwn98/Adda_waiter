@@ -96,6 +96,24 @@ if (!document.getElementById("waiter-tables-styles")) {
       body > *{ display:none !important; }
       #bill-print-area{ display:block !important; }
     }
+
+    /* ── Responsive (tablet/desktop) ───────────────────────────────────── */
+    @media (min-width: 600px) {
+      .modal-sheet   { max-width: 820px !important; }
+      .stats-grid    { gap: 12px !important; }
+      .tables-grid   { gap: 16px !important; }
+      .table-tile    { padding: 20px 14px !important; }
+      .wt-header-pad { padding: 20px 28px !important; }
+      .wt-header-title { font-size: 20px !important; }
+      .wt-content-pad { padding: 20px 24px 0 !important; }
+      .wt-floorplan  { margin: 0 24px 28px !important; padding: 24px 20px !important; }
+    }
+
+    @media (min-width: 1024px) {
+      .modal-sheet  { max-width: 600px !important; }
+      .table-tile   { padding: 24px 16px !important; }
+      .wt-floorplan { padding: 28px 24px !important; }
+    }
   `;
   document.head.appendChild(s);
 }
@@ -1222,6 +1240,7 @@ export default function WaiterTablesPage() {
         minHeight: "100vh",
         background: "#f5f5f5",
         display: "flex",
+        
         flexDirection: "column",
         paddingBottom: 72,
       }}

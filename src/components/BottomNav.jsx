@@ -259,7 +259,7 @@ export default function BottomNav({ cartCount = 0 }) {
         style={{
           position: "fixed",
           bottom: 0,
-          width: 420,
+          width: "100%",
           background: "#fff",
           borderTop: "1px solid #eee",
           display: "flex",
@@ -347,7 +347,7 @@ export default function BottomNav({ cartCount = 0 }) {
             gap: 2,
           }}
         >
-          <span style={{ fontSize: 20, lineHeight: 1 }}>🚪</span>
+          <span style={{ fontSize: 20, lineHeight: 1,color:"red" }}>⏻</span>
           <span style={{ fontSize: 10, fontWeight: 600, color: GRAY }}>Logout</span>
         </button>
       </div>
