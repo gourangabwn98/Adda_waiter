@@ -9,8 +9,8 @@ export const deleteUser = (id) => api.delete(`/admin/users/${id}`);
 // src/services/adminService.js
 export const getAllInvoices = () => api.get("admin/invoices/all");
 
-export const updateInvoiceStatus = (id, status) =>
-  api.patch(`admin/invoices/${id}/status`, { status });
+export const updateInvoiceStatus = (id, status, printerName = null) =>
+  api.patch(`admin/invoices/${id}/status`, { status, printerName });
 
 // ── NEW TABLE MANAGEMENT APIs ─────────────────────────────────────
 // export const getAllTables = () => api.get("admin/tables");
