@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   parameter-store:
-     VITE_API_URL:                 "/adda/frontend/VITE_API_URL"
+    VITE_API_URL:                 "/adda/frontend/VITE_API_URL"
     VITE_CAFE_NAME:               "/adda/frontend/VITE_CAFE_NAME"
     VITE_FIREBASE_API_KEY:        "/adda/frontend/VITE_FIREBASE_API_KEY"
     VITE_FIREBASE_AUTH_DOMAIN:    "/adda/frontend/VITE_FIREBASE_AUTH_DOMAIN"
