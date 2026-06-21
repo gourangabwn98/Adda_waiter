@@ -219,7 +219,7 @@ useEffect(() => {
         {step === "phone" ? (
           <>
             <div style={{ color: WHITE, fontWeight: 600, fontSize: 16, marginBottom: 20 }}>
-              LogIn
+              Log In
             </div>
 
             {/* Chef / Waiter dropdown */}
