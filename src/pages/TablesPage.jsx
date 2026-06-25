@@ -484,7 +484,7 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
                 )}
                 {[
                   { l: "Subtotal", v: `₹${Math.round(subtotal).toLocaleString()}` },
-                  { l: "GST (18%)", v: `₹${Math.round(tax).toLocaleString()}` },
+                  { l: "GST (0%)", v: `₹${Math.round(tax).toLocaleString()}` },
                 ].map((r) => (
                   <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
                     <span>{r.l}</span>
