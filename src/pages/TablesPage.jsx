@@ -152,7 +152,7 @@ function mergeOrderItems(orders) {
 function buildMergedBill(orders) {
   const items = mergeOrderItems(orders);
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = Math.round(subtotal * 0.18);
+  const tax = 0;
   const total = subtotal + tax;
   return { items, subtotal, tax, total };
 }
