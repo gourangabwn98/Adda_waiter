@@ -302,7 +302,7 @@ export default function OrdersPage() {
                         value={`₹${order.subtotal ?? 0}`}
                       />
                       {order.tax > 0 && (
-                        <BillRow label="Tax" value={`₹${order.tax}`} muted />
+                        <BillRow label="Tax" value={`0`} muted />
                       )}
                       {order.discount > 0 && (
                         <BillRow
@@ -340,7 +340,7 @@ export default function OrdersPage() {
                       </div>
                     )}
 
-                    <button
+                    {/* <button
                       onClick={() => handleReprint(order)}
                       style={{
                         marginTop: 14,
@@ -356,7 +356,7 @@ export default function OrdersPage() {
                       }}
                     >
                       🖨️ Re-print KOT
-                    </button>
+                    </button> */}
                   </div>
                 )}
               </div>
