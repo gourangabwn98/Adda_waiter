@@ -288,44 +288,30 @@ export default function OrdersPage() {
                     ))}
 
                     {/* Bill breakdown */}
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: "10px 12px",
-                        background: "#fafafa",
-                        borderRadius: 10,
-                        fontSize: 13,
-                      }}
-                    >
-                      <BillRow
-                        label="Subtotal"
-                        value={`₹${order.subtotal ?? 0}`}
-                      />
-                      {order.tax > 0 && (
-                        <BillRow label="Tax" value={`0`} muted />
-                      )}
-                      {order.discount > 0 && (
-                        <BillRow
-                          label="Discount"
-                          value={`−₹${order.discount}`}
-                          muted
-                        />
-                      )}
-                      <div
-                        style={{
-                          borderTop: "1px solid #e0e0e0",
-                          marginTop: 6,
-                          paddingTop: 6,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontWeight: 800,
-                          fontSize: 15,
-                        }}
-                      >
-                        <span>Total</span>
-                        <span style={{ color: PINK }}>₹{order.total ?? 0}</span>
-                      </div>
-                    </div>
+                  {/* Bill breakdown */}
+<div style={{
+  marginTop: 12, padding: "10px 12px",
+  background: "#fafafa", borderRadius: 10, fontSize: 13,
+}}>
+  <BillRow label="Subtotal" value={`₹${order.subtotal ?? 0}`} />
+
+  {order.tax > 0 && (
+    <BillRow label="GST" value={`₹${order.tax}`} muted />
+  )}
+
+  {order.serviceCharge > 0 && (
+    <BillRow label="Service Charge" value={`₹${order.serviceCharge}`} muted />
+  )}
+
+  <div style={{
+    borderTop: "1px solid #e0e0e0", marginTop: 6, paddingTop: 6,
+    display: "flex", justifyContent: "space-between",
+    fontWeight: 800, fontSize: 15,
+  }}>
+    <span>Total</span>
+    <span style={{ color: PINK }}>₹{order.total ?? 0}</span>
+  </div>
+</div>
 
                     {order.notes && (
                       <div
