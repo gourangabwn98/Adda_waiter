@@ -149,12 +149,14 @@ function mergeOrderItems(orders) {
   return Object.values(map);
 }
 
+// REPLACE WITH
 function buildMergedBill(orders) {
   const items = mergeOrderItems(orders);
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = 0;
-  const total = subtotal + tax;
-  return { items, subtotal, tax, total };
+  const tax = orders.reduce((s, o) => s + (o.tax || 0), 0);
+  const serviceCharge = orders.reduce((s, o) => s + (o.serviceCharge || 0), 0);
+  const total = subtotal + tax + serviceCharge;
+  return { items, subtotal, tax, serviceCharge, total };
 }
 
 // ── Printer Select Modal ──────────────────────────────────────────────────────
@@ -307,7 +309,7 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
   const [printerModal, setPrinterModal] = useState(null);
   const nav = useNavigate();
 
-  const { items: mergedItems, subtotal, tax, total } = buildMergedBill(orders);
+ const { items: mergedItems, subtotal, tax, serviceCharge, total } = buildMergedBill(orders);
 
   const isPending = invoice?.invoiceStatus?.toLowerCase() === "pending";
   const isFree = orders.length === 0;
@@ -478,19 +480,20 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
               <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #f0f0f0", padding: "12px 16px", marginBottom: 18 }}>
                 {orders.length > 1 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#aaa", marginBottom: 6, paddingBottom: 8, borderBottom: "1px dashed #f0f0f0" }}>
-                    <span>{orders.length} orders combined</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace" }}>₹{orders.reduce((s, o) => s + Number(o.total || 0), 0).toLocaleString()}</span>
+                    {/* <span>{orders.length} orders combined</span> */}
+                    {/* <span style={{ fontFamily: "'DM Mono',monospace" }}>₹{orders.reduce((s, o) => s + Number(o.total || 0), 0).toLocaleString()}</span> */}
                   </div>
                 )}
-                {[
-                  { l: "Subtotal", v: `₹${Math.round(subtotal).toLocaleString()}` },
-                  { l: "GST (0%)", v: `₹${Math.round(tax).toLocaleString()}` },
-                ].map((r) => (
-                  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
-                    <span>{r.l}</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace" }}>{r.v}</span>
-                  </div>
-                ))}
+               {[
+  { l: "Subtotal", v: `₹${Math.round(subtotal).toLocaleString()}` },
+  ...(tax > 0 ? [{ l: "GST", v: `₹${Math.round(tax).toLocaleString()}` }] : []),
+  ...(serviceCharge > 0 ? [{ l: "Service Charge", v: `₹${Math.round(serviceCharge).toLocaleString()}` }] : []),
+].map((r) => (
+  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
+    <span>{r.l}</span>
+    <span style={{ fontFamily: "'DM Mono',monospace" }}>{r.v}</span>
+  </div>
+))}
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700, paddingTop: 10, borderTop: "1.5px solid #f0f0f0", marginTop: 4 }}>
                   <span>Grand Total</span>
                   <span style={{ color: PINK, fontFamily: "'DM Mono',monospace" }}>₹{Math.round(total).toLocaleString()}</span>
