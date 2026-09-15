@@ -4,6 +4,10 @@ export const getDashboard = () => api.get("/admin/dashboard");
 export const getAllOrders = (params) => api.get("/admin/orders", { params });
 export const updateOrderStatus = (id, status) =>
   api.put(`/admin/orders/${id}/status`, { status });
+// Pending-confirmation requests (see server orderRoutes.js, not under /admin/*)
+export const acceptOrderRequest = (id) => api.put(`/orders/${id}/accept`);
+export const declineOrderRequest = (id, reason) =>
+  api.put(`/orders/${id}/decline`, { reason });
 export const getAllUsers = (params) => api.get("/admin/users", { params });
 export const deleteUser = (id) => api.delete(`/admin/users/${id}`);
 // src/services/adminService.js

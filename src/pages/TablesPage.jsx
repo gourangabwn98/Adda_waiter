@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 import { getTables } from "../services/tableService.js";
 import {
   getAllOrders,
   getAllInvoices,
   updateOrderStatus,
   updateInvoiceStatus,
+  acceptOrderRequest,
+  declineOrderRequest,
 } from "../services/adminService.js";
 import api from "../services/api.js";
 import BottomNav from "../components/BottomNav.jsx";
@@ -18,6 +21,34 @@ const PINK_DARK = "#c2185b";
 const GREEN = "#1D9E75";
 const GREEN_LIGHT = "#e6f7ee";
 const WHITE = "#fff";
+
+// Backend origin for the Socket.IO connection — VITE_API_URL points at
+// ".../api", the socket needs the bare origin.
+const SOCKET_URL = (import.meta.env.VITE_API_URL || "").replace(/\/api\/?$/, "");
+
+// Short two-tone notification beep, synthesized via Web Audio — no audio
+// asset file needed.
+const playNotifySound = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 660].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      const start = ctx.currentTime + i * 0.18;
+      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.18);
+    });
+  } catch {
+    // Audio not available (e.g. autoplay policy before first user
+    // interaction) — non-fatal, the visual badge/toast still shows.
+  }
+};
 
 const STATUS_STYLE = {
   Empty:     { bg: WHITE,       border: "rgba(0,0,0,.15)", tc: "#b0aca6", label: "Free" },
@@ -153,8 +184,11 @@ function mergeOrderItems(orders) {
 function buildMergedBill(orders) {
   const items = mergeOrderItems(orders);
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = orders.reduce((s, o) => s + (o.tax || 0), 0);
-  const serviceCharge = orders.reduce((s, o) => s + (o.serviceCharge || 0), 0);
+  // Use the tax/service charge already computed & stored per order at
+  // placement time (orderController.placeOrder), same source of truth the
+  // orders themselves and the final invoice total are built from.
+  const tax = orders.reduce((s, o) => s + Number(o.tax || 0), 0);
+  const serviceCharge = orders.reduce((s, o) => s + Number(o.serviceCharge || 0), 0);
   const total = subtotal + tax + serviceCharge;
   return { items, subtotal, tax, serviceCharge, total };
 }
@@ -309,7 +343,7 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
   const [printerModal, setPrinterModal] = useState(null);
   const nav = useNavigate();
 
- const { items: mergedItems, subtotal, tax, serviceCharge, total } = buildMergedBill(orders);
+  const { items: mergedItems, subtotal, tax, serviceCharge, total } = buildMergedBill(orders);
 
   const isPending = invoice?.invoiceStatus?.toLowerCase() === "pending";
   const isFree = orders.length === 0;
@@ -484,16 +518,18 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
                     {/* <span style={{ fontFamily: "'DM Mono',monospace" }}>₹{orders.reduce((s, o) => s + Number(o.total || 0), 0).toLocaleString()}</span> */}
                   </div>
                 )}
-               {[
-  { l: "Subtotal", v: `₹${Math.round(subtotal).toLocaleString()}` },
-  ...(tax > 0 ? [{ l: "GST", v: `₹${Math.round(tax).toLocaleString()}` }] : []),
-  ...(serviceCharge > 0 ? [{ l: "Service Charge", v: `₹${Math.round(serviceCharge).toLocaleString()}` }] : []),
-].map((r) => (
-  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
-    <span>{r.l}</span>
-    <span style={{ fontFamily: "'DM Mono',monospace" }}>{r.v}</span>
-  </div>
-))}
+                {[
+                  { l: "Subtotal", v: `₹${Math.round(subtotal).toLocaleString()}` },
+                  { l: "GST", v: `₹${Math.round(tax).toLocaleString()}` },
+                  ...(serviceCharge > 0
+                    ? [{ l: "Service Charge", v: `₹${Math.round(serviceCharge).toLocaleString()}` }]
+                    : []),
+                ].map((r) => (
+                  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
+                    <span>{r.l}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace" }}>{r.v}</span>
+                  </div>
+                ))}
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700, paddingTop: 10, borderTop: "1.5px solid #f0f0f0", marginTop: 4 }}>
                   <span>Grand Total</span>
                   <span style={{ color: PINK, fontFamily: "'DM Mono',monospace" }}>₹{Math.round(total).toLocaleString()}</span>
@@ -615,6 +651,8 @@ export default function WaiterTablesPage() {
   const [invoiceMap, setInvoiceMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -630,7 +668,7 @@ export default function WaiterTablesPage() {
 
       const oMap = {};
       orders
-        .filter((o) => o.orderType === "Dining" && o.tableNo && !["Completed", "Cancelled"].includes(o.status))
+        .filter((o) => o.orderType === "Dining" && o.tableNo && !["Completed", "Cancelled", "PendingConfirmation"].includes(o.status))
         .forEach((o) => {
           const key = Number(o.tableNo);
           if (!oMap[key]) oMap[key] = [];
@@ -656,6 +694,7 @@ export default function WaiterTablesPage() {
       setTables(dbTables.sort((a, b) => a.tableNo - b.tableNo));
       setTableOrdersMap(oMap);
       setInvoiceMap(iMap);
+      setPendingRequests(orders.filter((o) => o.status === "PendingConfirmation"));
     } catch {
       toast.error("Failed to load tables");
     } finally {
@@ -668,6 +707,45 @@ export default function WaiterTablesPage() {
     const iv = setInterval(fetchAll, 30000);
     return () => clearInterval(iv);
   }, [fetchAll]);
+
+  // Real-time: play a sound and refresh the instant a customer places (or
+  // cancels) a pending order, instead of waiting for the next 30s poll.
+  useEffect(() => {
+    const socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+
+    socket.on("order-request", (order) => {
+      playNotifySound();
+      toast(`New order request — Table ${order.tableNo ?? "-"} (${order.orderId})`, { icon: "🔔" });
+      fetchAll();
+    });
+    socket.on("order-status-updated", () => {
+      fetchAll();
+    });
+
+    return () => socket.disconnect();
+  }, [fetchAll]);
+
+  const handleAcceptRequest = async (orderId) => {
+    try {
+      await acceptOrderRequest(orderId);
+      toast.success("Order accepted");
+      await fetchAll();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to accept order");
+    }
+  };
+
+  const handleDeclineRequest = async (orderId) => {
+    const reason = window.prompt("Reason for declining (optional):", "");
+    if (reason === null) return;
+    try {
+      await declineOrderRequest(orderId, reason);
+      toast.success("Order declined");
+      await fetchAll();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to decline order");
+    }
+  };
 
   const activeTables = tables.filter((t) => t.status !== "Inactive");
   const occupied = activeTables.filter((t) => (tableOrdersMap[t.tableNo] || []).length > 0).length;
@@ -691,6 +769,14 @@ export default function WaiterTablesPage() {
           <div style={{ color: "rgba(255,255,255,.75)", fontSize: 12, marginTop: 2 }}>👋 {user?.waiterName || user?.name || "Waiter"}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {pendingRequests.length > 0 && (
+            <span
+              onClick={() => setShowPendingModal(true)}
+              style={{ background: "#ffcdd2", color: "#c62828", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+            >
+              🔔 {pendingRequests.length} awaiting confirmation
+            </span>
+          )}
           {pendingCount > 0 && (
             <span style={{ background: "#ffcdd2", color: "#c62828", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 600 }}>⚠ {pendingCount} pending</span>
           )}
@@ -758,6 +844,69 @@ export default function WaiterTablesPage() {
           onRefresh={fetchAll}
         />
       )}
+
+      {showPendingModal && (
+        <PendingRequestsModal
+          orders={pendingRequests}
+          onAccept={handleAcceptRequest}
+          onDecline={handleDeclineRequest}
+          onClose={() => setShowPendingModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Pending Requests Modal ──────────────────────────────────────────────────
+// Orders awaiting admin/Waiter confirmation — either app can accept/decline;
+// first response wins (server rejects a second accept/decline as a no-op).
+function PendingRequestsModal({ orders, onAccept, onDecline, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: "#e0e0e0" }} />
+        </div>
+        <div style={{ padding: "14px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>
+            🔔 Awaiting confirmation {orders.length > 0 && `(${orders.length})`}
+          </div>
+          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #eee", background: "#fafafa", cursor: "pointer", fontSize: 13, color: "#888" }}>✕</button>
+        </div>
+
+        <div style={{ padding: "16px 20px 30px" }}>
+          {orders.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#ccc", fontSize: 13 }}>
+              No pending order requests right now.
+            </div>
+          ) : (
+            orders.map((o) => (
+              <div key={o._id} style={{ border: "1.5px solid #ffcdd2", borderRadius: 14, padding: 14, marginBottom: 12, background: "#fff8f8" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>
+                      {o.orderType === "Dining" ? `Table ${o.tableNo ?? "-"}` : "Take Away"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#aaa", fontFamily: "'DM Mono',monospace" }}>{o.orderId}</div>
+                  </div>
+                  <div style={{ fontWeight: 700, color: PINK, fontFamily: "'DM Mono',monospace" }}>₹{Math.round(o.total).toLocaleString()}</div>
+                </div>
+                <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+                  {o.items?.map((it) => `${it.name} ×${it.qty}`).join(", ")}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => onDecline(o._id)} style={{ flex: 1, padding: "9px 0", borderRadius: 20, border: "1.5px solid #d32f2f", background: WHITE, color: "#d32f2f", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    Decline
+                  </button>
+                  <button onClick={() => onAccept(o._id)} style={{ flex: 1, padding: "9px 0", borderRadius: 20, border: "none", background: GREEN, color: WHITE, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    Accept
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

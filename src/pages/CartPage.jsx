@@ -366,6 +366,12 @@ function getCart() {
 }
 function saveCart(c) { sessionStorage.setItem("cart", JSON.stringify(c)); }
 
+// Parcel / Water / Gas items are exempt from service charge (matches
+// server/utils/serviceCharge.js).
+const SERVICE_CHARGE_EXEMPT_CATEGORIES = ["parcel", "water", "gas"];
+const isServiceChargeExempt = (category) =>
+  SERVICE_CHARGE_EXEMPT_CATEGORIES.includes(String(category || "").trim().toLowerCase());
+
 // ── fetch restaurant profile (service charge + GST) ───────────────────────────
 // ── fetch restaurant profile (service charge + GST) ───────────────────────────
 async function fetchProfile() {
@@ -435,7 +441,13 @@ export default function CartPage() {
   const subtotal         = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const totalQty         = cart.reduce((s, i) => s + i.qty, 0);
   const tax              = Math.round(subtotal * (gstRate / 100));
-  const serviceChargeAmt = serviceChargePerItem * totalQty;
+  // Parcel / Water / Gas items are exempt from service charge (matches
+  // server/utils/serviceCharge.js) — totalQty above stays the raw cart count
+  // used for display elsewhere; only the charge itself excludes these.
+  const chargeableQty    = cart
+    .filter((i) => !isServiceChargeExempt(i.category))
+    .reduce((s, i) => s + i.qty, 0);
+  const serviceChargeAmt = serviceChargePerItem * chargeableQty;
   const grandTotal       = subtotal + tax + serviceChargeAmt;
 
   /* ── place order ── */
@@ -610,7 +622,7 @@ export default function CartPage() {
               Service Charge
               {serviceChargeAmt > 0 && (
                 <span style={{ fontSize: 11, color: "#bbb", marginLeft: 4 }}>
-                  (₹{serviceChargePerItem} × {totalQty} items)
+                  (₹{serviceChargePerItem} × {chargeableQty} items)
                 </span>
               )}
             </span>
@@ -657,7 +669,7 @@ export default function CartPage() {
               <span>
                 Service Charge
                 <span style={{ fontSize: 11, color: "#bbb", marginLeft: 4 }}>
-                  (₹{serviceChargePerItem} × {totalQty})
+                  (₹{serviceChargePerItem} × {chargeableQty})
                 </span>
               </span>
               <span style={{ fontWeight: 600, color: "#333" }}>₹{serviceChargeAmt}</span>
