@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMyOrders } from "../services/orderService.js";
-import { updatePaymentStatus, updateOrderPaymentMethod } from "../services/adminService.js";
+import { updatePaymentStatus, updateOrderPaymentMethod, getChefRevenue } from "../services/adminService.js";
 import { printKOTs } from "../utils/kotPrint.js";
 import { useAuth } from "../hooks/useAuth.js";
 import BottomNav from "../components/BottomNav.jsx";
@@ -29,6 +29,17 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  // This waiter's own daily Cash/Online collection — see
+  // server/controllers/chefController.js getChefRevenue. Only populated
+  // once a chefId is on the logged-in user (set at login, LoginPage.jsx).
+  const [myRevenue, setMyRevenue] = useState(null);
+
+  useEffect(() => {
+    if (!user?.chefId) return;
+    getChefRevenue({ chefId: user.chefId })
+      .then((r) => setMyRevenue(r.data?.chefs?.[0] || { cash: 0, online: 0, total: 0 }))
+      .catch(() => setMyRevenue(null));
+  }, [user?.chefId]);
 
   const load = () => {
     setLoading(true);
@@ -151,6 +162,34 @@ export default function OrdersPage() {
           🔄 Refresh
         </button>
       </div>
+
+      {/* ── My Daily Revenue (Cash vs Online) ── */}
+      {myRevenue && (
+        <div style={{ padding: "12px 16px 0" }}>
+          <div style={{
+            background: "#fff", borderRadius: 14, padding: "14px 16px",
+            border: "1px solid #f0f0f0", boxShadow: "0 2px 8px rgba(0,0,0,.04)",
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+              💰 My Daily Revenue
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#888" }}>💵 Cash</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#222" }}>₹{myRevenue.cash.toFixed(0)}</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#888" }}>💳 Online</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#222" }}>₹{myRevenue.online.toFixed(0)}</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#888" }}>Total</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: PINK }}>₹{myRevenue.total.toFixed(0)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── List ── */}
       <div style={{ padding: "12px 16px" }}>

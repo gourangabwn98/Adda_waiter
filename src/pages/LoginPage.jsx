@@ -19,6 +19,7 @@ export default function LoginPage() {
 
   const [step,    setStep]    = useState("phone");
   const [name,    setName]    = useState("");
+  const [chefId,  setChefId]  = useState("");
   const [phone,   setPhone]   = useState("");
   const [otp,     setOtp]     = useState(Array(6).fill(""));
   const [timer,   setTimer]   = useState(120);
@@ -121,7 +122,7 @@ useEffect(() => {
       const result       = await window.confirmationResult.confirm(code);
       const firebaseToken = await result.user.getIdToken();
       const { data }     = await firebaseVerify(firebaseToken, name);
-      login({ ...data, waiterName: name });
+      login({ ...data, waiterName: name, chefId });
       window.confirmationResult = null;
       nav("/tables");
       toast.success(`Welcome, ${name}! 👋`);
@@ -232,7 +233,7 @@ useEffect(() => {
                 onChange={(e) => {
                   const selected = chefs.find(c => c.phone === e.target.value);
                   setPhone(e.target.value);
-                  if (selected) setName(selected.name);
+                  if (selected) { setName(selected.name); setChefId(selected._id); }
                 }}
                 style={{
                   ...inp,
