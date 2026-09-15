@@ -4,6 +4,12 @@ export const getDashboard = () => api.get("/admin/dashboard");
 export const getAllOrders = (params) => api.get("/admin/orders", { params });
 export const updateOrderStatus = (id, status) =>
   api.put(`/admin/orders/${id}/status`, { status });
+// "Unpaid" in the UI maps to the existing "Pending" paymentStatus value —
+// there's no separate "Unpaid" enum value in the Order schema.
+export const updatePaymentStatus = (id, paymentStatus) =>
+  api.put(`/admin/orders/${id}/status`, { paymentStatus });
+export const updateOrderPaymentMethod = (id, paymentMethod) =>
+  api.put(`/admin/orders/${id}/status`, { paymentMethod });
 // Pending-confirmation requests (see server orderRoutes.js, not under /admin/*)
 export const acceptOrderRequest = (id) => api.put(`/orders/${id}/accept`);
 export const declineOrderRequest = (id, reason) =>

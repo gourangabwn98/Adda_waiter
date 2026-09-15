@@ -402,6 +402,10 @@ export default function CartPage() {
   const [cart, setCart]           = useState(getCart);
   const [loading, setLoading]     = useState(false);
   const [orderNote, setOrderNote] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  // "Unpaid" maps to the existing "Pending" paymentStatus value — there's
+  // no separate "Unpaid" enum value in the Order schema.
+  const [paymentStatus, setPaymentStatus] = useState("Pending");
 
   // ── service charge state ──────────────────────────────────────────────────
   const [serviceChargePerItem, setServiceChargePerItem] = useState(0);
@@ -470,6 +474,8 @@ export default function CartPage() {
         notes:       orderNote,
         waiterName:  user?.waiterName || "Waiter",
         totalAmount: grandTotal,
+        paymentMethod,
+        paymentStatus,
       };
       const { data } = await placeOrder(payload);
       toast.success("Order placed! KOT printing…");
@@ -570,6 +576,42 @@ export default function CartPage() {
             style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px",
               borderRadius: 12, border: "1px solid #e0e0e0", fontSize: 13,
               outline: "none", resize: "none" }} />
+        </div>
+
+        {/* Payment method */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#333", marginBottom: 6 }}>
+            Payment Method
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {["Cash", "Online"].map((m) => (
+              <button key={m} onClick={() => setPaymentMethod(m)} style={{ flex: 1, padding: "10px 0",
+                borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                border: paymentMethod === m ? `2px solid ${PINK}` : "1px solid #e0e0e0",
+                background: paymentMethod === m ? PINK : "#fff",
+                color: paymentMethod === m ? "#fff" : "#555" }}>
+                {m === "Cash" ? "💵" : "💳"} {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Payment status */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#333", marginBottom: 6 }}>
+            Payment Status
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ label: "Unpaid", value: "Pending" }, { label: "Paid", value: "Paid" }].map((o) => (
+              <button key={o.value} onClick={() => setPaymentStatus(o.value)} style={{ flex: 1, padding: "10px 0",
+                borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                border: paymentStatus === o.value ? `2px solid ${PINK}` : "1px solid #e0e0e0",
+                background: paymentStatus === o.value ? PINK : "#fff",
+                color: paymentStatus === o.value ? "#fff" : "#555" }}>
+                {o.value === "Paid" ? "✅" : "⏳"} {o.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── ADD ORDER SUMMARY HERE ── */}
