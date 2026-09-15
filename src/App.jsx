@@ -7,6 +7,7 @@ import MenuPage from "./pages/MenuPage.jsx";
 import CartPage from "./pages/CartPage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
 import "./App.css";
+//hello
 
 const Guard = ({ children }) => {
   const { user } = useAuth();
