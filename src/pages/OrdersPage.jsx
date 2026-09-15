@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMyOrders } from "../services/orderService.js";
+import { updatePaymentStatus, updateOrderPaymentMethod } from "../services/adminService.js";
 import { printKOTs } from "../utils/kotPrint.js";
 import { useAuth } from "../hooks/useAuth.js";
 import BottomNav from "../components/BottomNav.jsx";
@@ -47,6 +48,30 @@ export default function OrdersPage() {
   useEffect(() => {
     load();
   }, []);
+
+  const handlePaymentStatusChange = async (id, newPaymentStatus) => {
+    try {
+      await updatePaymentStatus(id, newPaymentStatus);
+      setOrders((prev) =>
+        prev.map((o) => (o._id === id ? { ...o, paymentStatus: newPaymentStatus } : o)),
+      );
+      toast.success(`Payment → ${newPaymentStatus === "Pending" ? "Unpaid" : newPaymentStatus}`);
+    } catch {
+      toast.error("Payment status update failed");
+    }
+  };
+
+  const handlePaymentMethodChange = async (id, newPaymentMethod) => {
+    try {
+      await updateOrderPaymentMethod(id, newPaymentMethod);
+      setOrders((prev) =>
+        prev.map((o) => (o._id === id ? { ...o, paymentMethod: newPaymentMethod } : o)),
+      );
+      toast.success(`Payment method → ${newPaymentMethod}`);
+    } catch {
+      toast.error("Payment method update failed");
+    }
+  };
 
   const handleReprint = (order) => {
     // schema uses `qty` not `quantity`
@@ -311,7 +336,63 @@ export default function OrdersPage() {
     <span>Total</span>
     <span style={{ color: PINK }}>₹{order.total ?? 0}</span>
   </div>
+
+  <BillRow label="Payment Method" value={order.paymentMethod || "—"} muted />
 </div>
+
+                    {/* Change payment status / method */}
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                        Payment status
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {/* "Unpaid" maps to the existing "Pending" paymentStatus value. */}
+                        {[
+                          { label: "Paid", value: "Paid" },
+                          { label: "Unpaid", value: "Pending" },
+                        ]
+                          .filter((o2) => o2.value !== order.paymentStatus)
+                          .map((o2) => {
+                            const st = PAYMENT_STYLE[o2.value.toLowerCase()] || PAYMENT_STYLE.pending;
+                            return (
+                              <button
+                                key={o2.value}
+                                onClick={() => handlePaymentStatusChange(order._id, o2.value)}
+                                style={{
+                                  padding: "6px 12px", borderRadius: 20, border: `1px solid ${st.color}`,
+                                  background: st.bg, color: st.color, cursor: "pointer",
+                                  fontSize: 12, fontWeight: 700,
+                                }}
+                              >
+                                {o2.label}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                        Payment method
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {["Cash", "Online"]
+                          .filter((m) => m !== order.paymentMethod)
+                          .map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => handlePaymentMethodChange(order._id, m)}
+                              style={{
+                                padding: "6px 12px", borderRadius: 20, border: "1px solid #e0e0e0",
+                                background: "#f5f5f5", color: "#555", cursor: "pointer",
+                                fontSize: 12, fontWeight: 700,
+                              }}
+                            >
+                              {m === "Cash" ? "💵" : "💳"} {m}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
 
                     {order.notes && (
                       <div

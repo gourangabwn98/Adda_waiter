@@ -9,6 +9,8 @@ import {
   updateInvoiceStatus,
   acceptOrderRequest,
   declineOrderRequest,
+  updatePaymentStatus,
+  updateOrderPaymentMethod,
 } from "../services/adminService.js";
 import api from "../services/api.js";
 import BottomNav from "../components/BottomNav.jsx";
@@ -246,6 +248,82 @@ function PrinterSelectModal({ onSelect, onCancel }) {
   );
 }
 
+// ── Payment Step Modal ────────────────────────────────────────────────────────
+// Shown right after "Deliver All" succeeds, before the printer picker — lets
+// the waiter record how the table actually paid, applied to every order at
+// this table (see handleApplyPaymentAndPrint), then moves straight into the
+// existing printer-selection step.
+const PINK_STEP = "#e91e8c";
+function PaymentStepModal({ paymentMethod, paymentStatus, onChangeMethod, onChangeStatus, onContinue, onCancel, loading }) {
+  return (
+    <div className="printer-modal-overlay" onClick={onCancel}>
+      <div className="printer-modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#111", marginBottom: 4 }}>
+            💰 Payment
+          </div>
+          <div style={{ fontSize: 13, color: "#aaa" }}>
+            How did the table pay before printing the bill?
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "#333", marginBottom: 8 }}>Payment Method</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {["Cash", "Online"].map((m) => (
+              <button key={m} onClick={() => onChangeMethod(m)} style={{ flex: 1, padding: "10px 0",
+                borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                border: paymentMethod === m ? `2px solid ${PINK_STEP}` : "1px solid #e0e0e0",
+                background: paymentMethod === m ? PINK_STEP : "#fff",
+                color: paymentMethod === m ? "#fff" : "#555" }}>
+                {m === "Cash" ? "💵" : "💳"} {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "#333", marginBottom: 8 }}>Payment Status</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ label: "Unpaid", value: "Pending" }, { label: "Paid", value: "Paid" }].map((o) => (
+              <button key={o.value} onClick={() => onChangeStatus(o.value)} style={{ flex: 1, padding: "10px 0",
+                borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                border: paymentStatus === o.value ? `2px solid ${PINK_STEP}` : "1px solid #e0e0e0",
+                background: paymentStatus === o.value ? PINK_STEP : "#fff",
+                color: paymentStatus === o.value ? "#fff" : "#555" }}>
+                {o.value === "Paid" ? "✅" : "⏳"} {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={onContinue}
+          disabled={loading}
+          style={{
+            width: "100%", padding: "13px", borderRadius: 12, fontSize: 14,
+            fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", border: "none",
+            background: loading ? "#ccc" : PINK_STEP, color: "#fff", marginBottom: 8,
+          }}
+        >
+          {loading ? "Saving…" : "Continue to Print →"}
+        </button>
+
+        <button
+          onClick={onCancel}
+          style={{
+            width: "100%", padding: "12px", borderRadius: 12, fontSize: 13,
+            fontWeight: 600, cursor: "pointer", border: "1.5px solid #f0f0f0",
+            background: "#fafafa", color: "#aaa",
+          }}
+        >
+          Skip for now
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── History Tab ───────────────────────────────────────────────────────────────
 function HistoryTab({ tableNo }) {
   const [history, setHistory] = useState([]);
@@ -341,9 +419,18 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
   const [printing, setPrinting] = useState(false);
   // null = hidden, "selecting" = show printer modal, "printing" = sending to printer
   const [printerModal, setPrinterModal] = useState(null);
+  // Shown right after "Deliver All" succeeds, before the printer picker —
+  // lets the waiter record how the table actually paid.
+  const [paymentStep, setPaymentStep] = useState(false);
+  const [stepPaymentMethod, setStepPaymentMethod] = useState("Cash");
+  const [stepPaymentStatus, setStepPaymentStatus] = useState("Paid");
+  const [applyingPayment, setApplyingPayment] = useState(false);
   const nav = useNavigate();
 
   const { items: mergedItems, subtotal, tax, serviceCharge, total } = buildMergedBill(orders);
+  // Distinct payment methods across the merged orders at this table — usually
+  // just one, but shown as a joined list on the rare case they differ.
+  const paymentMethods = [...new Set(orders.map((o) => o.paymentMethod).filter(Boolean))].join(", ") || "—";
 
   const isPending = invoice?.invoiceStatus?.toLowerCase() === "pending";
   const isFree = orders.length === 0;
@@ -371,11 +458,37 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
       await Promise.all(toDeliver.map((o) => updateOrderStatus(o._id, "Delivered")));
       toast.success(toDeliver.length > 1 ? `${toDeliver.length} orders marked Delivered!` : "Order marked as Delivered!");
       await onRefresh();
-      onClose();
+      // Instead of closing here, go straight into the payment step so the
+      // waiter records how the table paid before moving on to print.
+      setStepPaymentMethod(orders[0]?.paymentMethod || "Cash");
+      setStepPaymentStatus(orders[0]?.paymentStatus || "Paid");
+      setPaymentStep(true);
     } catch {
       toast.error("Failed to update status");
     } finally {
       setDelivering(false);
+    }
+  };
+
+  // Apply the chosen payment method/status to every order on this table,
+  // then move straight into the printer picker (same flow handlePrintBillClick
+  // starts) — one continuous Deliver → Payment → Print sequence.
+  const handleApplyPaymentAndPrint = async () => {
+    try {
+      setApplyingPayment(true);
+      await Promise.all(
+        orders.flatMap((o) => [
+          updateOrderPaymentMethod(o._id, stepPaymentMethod),
+          updatePaymentStatus(o._id, stepPaymentStatus),
+        ]),
+      );
+      await onRefresh();
+      setPaymentStep(false);
+      setPrinterModal("selecting");
+    } catch {
+      toast.error("Failed to update payment");
+    } finally {
+      setApplyingPayment(false);
     }
   };
 
@@ -421,6 +534,19 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
 
   return (
     <>
+      {/* Payment step — shown right after "Deliver All", before printing */}
+      {paymentStep && (
+        <PaymentStepModal
+          paymentMethod={stepPaymentMethod}
+          paymentStatus={stepPaymentStatus}
+          onChangeMethod={setStepPaymentMethod}
+          onChangeStatus={setStepPaymentStatus}
+          onContinue={handleApplyPaymentAndPrint}
+          onCancel={() => { setPaymentStep(false); onClose(); }}
+          loading={applyingPayment}
+        />
+      )}
+
       {/* Printer selection modal — rendered above the table popup */}
       {printerModal === "selecting" && (
         <PrinterSelectModal
@@ -541,6 +667,12 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
                   <span>Grand Total</span>
                   <span style={{ color: PINK, fontFamily: "'DM Mono',monospace" }}>₹{Math.round(total).toLocaleString()}</span>
                 </div>
+                {!isFree && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#aaa", marginTop: 8 }}>
+                    <span>Payment Method</span>
+                    <span>{paymentMethods}</span>
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
