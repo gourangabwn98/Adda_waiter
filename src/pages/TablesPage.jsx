@@ -588,8 +588,15 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, val, color }) => (
-  <div style={{ background: WHITE, borderRadius: 12, padding: "12px 14px", border: "1.5px solid rgba(0,0,0,.07)", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
+const StatCard = ({ label, val, color, onClick }) => (
+  <div
+    onClick={onClick}
+    style={{
+      background: WHITE, borderRadius: 12, padding: "12px 14px",
+      border: onClick ? "1.5px solid rgba(211,47,47,.3)" : "1.5px solid rgba(0,0,0,.07)",
+      boxShadow: "0 2px 8px rgba(0,0,0,.04)", cursor: onClick ? "pointer" : "default",
+    }}
+  >
     <div style={{ fontSize: 22, fontWeight: 600, color: color || "#111", fontFamily: "'DM Mono',monospace" }}>{val}</div>
     <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, fontWeight: 500 }}>{label}</div>
   </div>
@@ -768,14 +775,19 @@ export default function WaiterTablesPage() {
           <div style={{ color: "rgba(255,255,255,.75)", fontSize: 12, marginTop: 2 }}>👋 {user?.waiterName || user?.name || "Waiter"}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {pendingRequests.length > 0 && (
-            <span
-              onClick={() => setShowPendingModal(true)}
-              style={{ background: "#ffcdd2", color: "#c62828", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-            >
-              🔔 {pendingRequests.length} awaiting confirmation
-            </span>
-          )}
+          {/* Always visible (not just when count > 0) — matches the admin
+              dashboard's persistent "Awaiting confirmation" card, so there's
+              always a way to open the pending-requests list. */}
+          <span
+            onClick={() => setShowPendingModal(true)}
+            style={{
+              background: pendingRequests.length > 0 ? "#ffcdd2" : "rgba(255,255,255,.2)",
+              color: pendingRequests.length > 0 ? "#c62828" : WHITE,
+              borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            🔔 {pendingRequests.length > 0 ? `${pendingRequests.length} awaiting confirmation` : "Awaiting confirmation"}
+          </span>
           {pendingCount > 0 && (
             <span style={{ background: "#ffcdd2", color: "#c62828", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 600 }}>⚠ {pendingCount} pending</span>
           )}
@@ -784,11 +796,44 @@ export default function WaiterTablesPage() {
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 10 }}>
           <StatCard label="Occupied" val={occupied} color={PINK} />
           <StatCard label="Free" val={free} color={GREEN} />
           <StatCard label="Pay pending" val={pendingCount} color={pendingCount > 0 ? "#c62828" : GREEN} />
           <StatCard label="Total" val={tables.length} />
+        </div>
+
+        {/* Always-visible entry point to the pending-requests list — same
+            role as the admin dashboard's "Awaiting confirmation" card. */}
+        <div
+          onClick={() => setShowPendingModal(true)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: pendingRequests.length > 0 ? "#fff0f0" : WHITE,
+            border: `1.5px solid ${pendingRequests.length > 0 ? "#d32f2f" : "rgba(0,0,0,.07)"}`,
+            borderRadius: 12, padding: "12px 14px", marginBottom: 14, cursor: "pointer",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🔔</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: pendingRequests.length > 0 ? "#c62828" : "#111" }}>
+                Awaiting Confirmation
+              </div>
+              <div style={{ fontSize: 11, color: "#999", marginTop: 1 }}>
+                {pendingRequests.length > 0 ? "Tap to review" : "No pending requests"}
+              </div>
+            </div>
+          </div>
+          {pendingRequests.length > 0 && (
+            <span style={{
+              minWidth: 26, height: 26, borderRadius: 13, background: "#d32f2f", color: WHITE,
+              fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center",
+              justifyContent: "center", padding: "0 6px",
+            }}>
+              {pendingRequests.length}
+            </span>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
