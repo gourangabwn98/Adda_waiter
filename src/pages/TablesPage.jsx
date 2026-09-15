@@ -152,9 +152,13 @@ function mergeOrderItems(orders) {
 function buildMergedBill(orders) {
   const items = mergeOrderItems(orders);
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = 0;
-  const total = subtotal + tax;
-  return { items, subtotal, tax, total };
+  // Use the tax/service charge already computed & stored per order at
+  // placement time (orderController.placeOrder), same source of truth the
+  // orders themselves and the final invoice total are built from.
+  const tax = orders.reduce((s, o) => s + Number(o.tax || 0), 0);
+  const serviceCharge = orders.reduce((s, o) => s + Number(o.serviceCharge || 0), 0);
+  const total = subtotal + tax + serviceCharge;
+  return { items, subtotal, tax, serviceCharge, total };
 }
 
 // ── Printer Select Modal ──────────────────────────────────────────────────────
@@ -307,7 +311,7 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
   const [printerModal, setPrinterModal] = useState(null);
   const nav = useNavigate();
 
-  const { items: mergedItems, subtotal, tax, total } = buildMergedBill(orders);
+  const { items: mergedItems, subtotal, tax, serviceCharge, total } = buildMergedBill(orders);
 
   const isPending = invoice?.invoiceStatus?.toLowerCase() === "pending";
   const isFree = orders.length === 0;
@@ -484,7 +488,10 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
                 )}
                 {[
                   { l: "Subtotal", v: `₹${Math.round(subtotal).toLocaleString()}` },
-                  { l: "GST (0%)", v: `₹${Math.round(tax).toLocaleString()}` },
+                  { l: "GST", v: `₹${Math.round(tax).toLocaleString()}` },
+                  ...(serviceCharge > 0
+                    ? [{ l: "Service Charge", v: `₹${Math.round(serviceCharge).toLocaleString()}` }]
+                    : []),
                 ].map((r) => (
                   <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#aaa", marginBottom: 6 }}>
                     <span>{r.l}</span>
