@@ -7,6 +7,9 @@ export const placeOrder = async (data) => {
       menuItemId: item.menuItemId || item._id, // ✅ handle both cases
       name: item.name,
       qty: item.qty || item.quantity,
+      notes: item.notes || "",
+      price: item.price,
+      category: item.category || "",
     })),
   };
 
