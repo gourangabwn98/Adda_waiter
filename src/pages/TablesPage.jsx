@@ -500,12 +500,19 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
               </div>
               <div style={{ background: "#fafafa", borderRadius: 14, border: "1px solid #f0f0f0", overflow: "hidden", marginBottom: 14 }}>
                 {mergedItems.map((item, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 14px", borderBottom: i < mergedItems.length - 1 ? "1px solid #f5f5f5" : "none", fontSize: 13 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: 8, background: PINK_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: PINK, fontFamily: "'DM Mono',monospace" }}>{item.qty}</div>
-                      <span style={{ color: "#333" }}>{item.name}</span>
+                  <div key={i} style={{ padding: "11px 14px", borderBottom: i < mergedItems.length - 1 ? "1px solid #f5f5f5" : "none" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: 8, background: PINK_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: PINK, fontFamily: "'DM Mono',monospace" }}>{item.qty}</div>
+                        <span style={{ color: "#333" }}>{item.name}</span>
+                      </div>
+                      <span style={{ fontWeight: 600, fontFamily: "'DM Mono',monospace", color: "#555" }}>₹{(item.price * item.qty).toLocaleString()}</span>
                     </div>
-                    <span style={{ fontWeight: 600, fontFamily: "'DM Mono',monospace", color: "#555" }}>₹{(item.price * item.qty).toLocaleString()}</span>
+                    {item.notes && (
+                      <div style={{ fontSize: 11, color: "#999", marginTop: 3, marginLeft: 36 }}>
+                        ↳ {item.notes}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
