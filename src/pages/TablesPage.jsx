@@ -180,6 +180,7 @@ function mergeOrderItems(orders) {
   return Object.values(map);
 }
 
+// REPLACE WITH
 function buildMergedBill(orders) {
   const items = mergeOrderItems(orders);
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -513,8 +514,8 @@ function TablePopup({ table, orders, invoice, onClose, onRefresh }) {
               <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #f0f0f0", padding: "12px 16px", marginBottom: 18 }}>
                 {orders.length > 1 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#aaa", marginBottom: 6, paddingBottom: 8, borderBottom: "1px dashed #f0f0f0" }}>
-                    <span>{orders.length} orders combined</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace" }}>₹{orders.reduce((s, o) => s + Number(o.total || 0), 0).toLocaleString()}</span>
+                    {/* <span>{orders.length} orders combined</span> */}
+                    {/* <span style={{ fontFamily: "'DM Mono',monospace" }}>₹{orders.reduce((s, o) => s + Number(o.total || 0), 0).toLocaleString()}</span> */}
                   </div>
                 )}
                 {[
