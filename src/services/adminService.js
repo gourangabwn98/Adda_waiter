@@ -44,6 +44,9 @@ export const regenerateQR = (tableNo) =>
 //for chef
 
 export const getAllChefs = () => api.get("admin/chefs");
+// Waiter-wise daily revenue (Cash/Online) — see server/controllers/chefController.js.
+// Waiter app passes `chefId` to see only its own logged-in staff member's numbers.
+export const getChefRevenue = (params) => api.get("admin/chefs/revenue", { params });
 // export const createChef = (data) => api.post("admin/chefs", data);
 // export const updateChefStatus = (id, status) =>
 //   api.patch(`admin/chefs/${id}/status`, { status });

@@ -473,6 +473,7 @@ export default function CartPage() {
         })),
         notes:       orderNote,
         waiterName:  user?.waiterName || "Waiter",
+        chefId:      user?.chefId || undefined,
         totalAmount: grandTotal,
         paymentMethod,
         paymentStatus,
