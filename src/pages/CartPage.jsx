@@ -477,6 +477,9 @@ export default function CartPage() {
         totalAmount: grandTotal,
         paymentMethod,
         paymentStatus,
+        // Waiter placed this directly — skips the "awaiting confirmation"
+        // step (see server/controllers/orderController.js placeOrder).
+        orderSource: "waiter",
       };
       const { data } = await placeOrder(payload);
       toast.success("Order placed! KOT printing…");
