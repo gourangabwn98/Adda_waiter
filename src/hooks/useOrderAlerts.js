@@ -43,10 +43,23 @@ const STORAGE_KEY = "adda_waiter_orderAlertsEnabled";
 
 let socket = null;
 let enabled = localStorage.getItem(STORAGE_KEY) === "1";
-// Set once a play (Enable click or a real alert) has resolved without the
-// browser blocking it — surfaced only via console, so a real failure is
-// visible in devtools instead of silently swallowed like before.
-let audioUnlockWarned = false;
+// One persistent, reused <audio> element for the whole tab session, not a
+// fresh `new Audio()` per play. A play call worked once ("Enable" beep or
+// the first real order) but not again after that — a freshly constructed,
+// unreferenced Audio() object is a known gotcha: nothing else holds a
+// reference to it, so it's a candidate for GC before/while playing, and
+// some browsers' autoplay heuristics track "this element already played
+// with the user's blessing" per element rather than purely per origin.
+// Reusing one element sidesteps both.
+let audioEl = null;
+function getAudioEl() {
+  if (!audioEl) {
+    audioEl = new Audio(chimeUrl);
+    audioEl.preload = "auto";
+    audioEl.volume = 0.9;
+  }
+  return audioEl;
+}
 
 // Every order this tab session has ever accounted for (whether via a live
 // "order-request" alert or a silent catch-up) — the single dedup guard
@@ -62,32 +75,17 @@ const notify = () => listeners.forEach((l) => l());
 const getEnabledSnapshot = () => enabled;
 const getPendingCountSnapshot = () => pendingOrderIds.size;
 
-// Plain HTMLAudioElement instead of manual Web Audio decode/buffer/suspend
-// handling — after several rounds of AudioContext-suspend edge cases still
-// not producing sound reliably, this is the simpler, far more standard
-// approach for "just play a short notification sound": the browser handles
-// fetching/decoding/output itself, with no AudioContext state to babysit.
-// A fresh Audio() per play (not one shared/reused element) so overlapping
-// alerts (two orders arriving close together) can play concurrently
-// instead of one cutting the other off.
 function playChime() {
   try {
-    const audio = new Audio(chimeUrl);
-    audio.volume = 0.9;
+    const audio = getAudioEl();
+    audio.currentTime = 0; // restart even if a previous play is still finishing
     const p = audio.play();
-    if (p?.then) {
-      p.then(() => { audioUnlockWarned = false; })
-        .catch((err) => {
-          // Blocked by autoplay policy (before "Enable" has been tapped) or
-          // some other playback error — logged once so it's visible in
-          // devtools instead of silently vanishing; the toast still shows
-          // the alert visually either way.
-          if (!audioUnlockWarned) {
-            audioUnlockWarned = true;
-            console.warn("[order-alert] chime playback failed:", err?.name || err);
-          }
-        });
-    }
+    // Logged on every failure (not just the first) — if this is still
+    // broken, the exact browser error (e.g. NotAllowedError vs something
+    // else) needs to be visible for every attempt to actually diagnose it.
+    p?.catch?.((err) => {
+      console.warn("[order-alert] chime playback failed:", err?.name || err);
+    });
   } catch (err) {
     console.warn("[order-alert] chime playback threw:", err);
   }
