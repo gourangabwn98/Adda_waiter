@@ -125,6 +125,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
+import { useOrderAlerts } from "../hooks/useOrderAlerts.js";
 
 const PINK = "#e91e8c";
 const PINK_LIGHT = "#fce4f3";
@@ -238,6 +239,10 @@ export default function BottomNav({ cartCount = 0 }) {
   const { pathname } = useLocation();
   const { logout } = useAuth();
   const [showLogout, setShowLogout] = useState(false);
+  // Mounted here (not TablesPage) because BottomNav is the one component
+  // every authenticated screen renders — new-order alerts now fire no
+  // matter which page the waiter is on.
+  const { enabled: alertsEnabled, enableAlerts, pendingCount } = useOrderAlerts();
 
   const handleLogoutConfirm = () => {
     setShowLogout(false);
@@ -253,6 +258,79 @@ export default function BottomNav({ cartCount = 0 }) {
           onConfirm={handleLogoutConfirm}
           onCancel={() => setShowLogout(false)}
         />
+      )}
+
+      {/* One-tap control to unlock audio — browsers block sound/speech
+          until a real user gesture happens on the page. */}
+      {!alertsEnabled && (
+        <div
+          onClick={enableAlerts}
+          style={{
+            position: "fixed",
+            bottom: 66,
+            left: 12,
+            right: 12,
+            zIndex: 90,
+            background: "#111",
+            color: "#fff",
+            borderRadius: 14,
+            padding: "10px 10px 10px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            cursor: "pointer",
+            boxShadow: "0 6px 20px rgba(0,0,0,.28)",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600 }}>
+            🔕 Tap to enable order alerts
+          </span>
+          <span
+            style={{
+              background: PINK,
+              color: "#fff",
+              padding: "7px 14px",
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Enable
+          </span>
+        </div>
+      )}
+
+      {/* Standing reminder while any order still needs a response — each
+          one already alerted once (sound + toast) when it arrived; this is
+          just a visible pointer back to Tables, no repeating sound. */}
+      {alertsEnabled && pendingCount > 0 && (
+        <div
+          className="blink-pending"
+          onClick={() => nav("/tables")}
+          style={{
+            position: "fixed",
+            bottom: 66,
+            left: 12,
+            right: 12,
+            zIndex: 90,
+            background: "#d32f2f",
+            color: "#fff",
+            borderRadius: 14,
+            padding: "10px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            cursor: "pointer",
+            boxShadow: "0 6px 20px rgba(211,47,47,.35)",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 700 }}>
+            🔔 {pendingCount} order{pendingCount > 1 ? "s" : ""} awaiting confirmation — tap to review
+          </span>
+        </div>
       )}
 
       <div
