@@ -260,6 +260,30 @@ export default function BottomNav({ cartCount = 0 }) {
         />
       )}
 
+      {/* Persistent, unobtrusive confirmation that alerts are on — clear
+          visual indicator distinct from the (occasional) pending-orders
+          banner below, which occupies the same bottom slot. */}
+      {alertsEnabled && (
+        <div
+          style={{
+            position: "fixed",
+            top: 10,
+            right: 10,
+            zIndex: 90,
+            background: "rgba(29,158,117,.95)",
+            color: "#fff",
+            borderRadius: 20,
+            padding: "5px 12px",
+            fontSize: 11,
+            fontWeight: 700,
+            boxShadow: "0 2px 10px rgba(0,0,0,.18)",
+            pointerEvents: "none",
+          }}
+        >
+          🔊 Order alerts enabled
+        </div>
+      )}
+
       {/* One-tap control to unlock audio — browsers block sound/speech
           until a real user gesture happens on the page. */}
       {!alertsEnabled && (
