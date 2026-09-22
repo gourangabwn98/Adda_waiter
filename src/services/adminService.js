@@ -17,7 +17,7 @@ export const declineOrderRequest = (id, reason) =>
 export const getAllUsers = (params) => api.get("/admin/users", { params });
 export const deleteUser = (id) => api.delete(`/admin/users/${id}`);
 // src/services/adminService.js
-export const getAllInvoices = () => api.get("admin/invoices/all");
+export const getAllInvoices = (params) => api.get("admin/invoices/all", { params });
 
 export const updateInvoiceStatus = (id, status, printerName = null) =>
   api.patch(`admin/invoices/${id}/status`, { status, printerName });
