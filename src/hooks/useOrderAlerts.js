@@ -39,6 +39,7 @@ import { getAllOrders } from "../services/adminService.js";
 import chimeUrl from "../assets/ring.mp3";
 
 const SOCKET_URL = (import.meta.env.VITE_API_URL || "").replace(/\/api\/?$/, "");
+console.log("[order-alert] SOCKET_URL =", SOCKET_URL); // add this line
 const STORAGE_KEY = "adda_waiter_orderAlertsEnabled";
 
 let socket = null;
@@ -148,11 +149,23 @@ function catchUpPendingOrders() {
 // BottomNav mount, it's a no-op after the first real call, so remounting
 // on navigation can never create a second connection/listener set.
 function ensureSocket() {
+  // if (socket || !SOCKET_URL) return;
+  // socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+
+  // socket.on("connect", catchUpPendingOrders);
+  // socket.on("order-request", alertForNewOrder);
+    console.log("[order-alert] ensureSocket called, SOCKET_URL:", SOCKET_URL); // add this
   if (socket || !SOCKET_URL) return;
   socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
 
-  socket.on("connect", catchUpPendingOrders);
-  socket.on("order-request", alertForNewOrder);
+  socket.on("connect", () => {
+    console.log("[order-alert] socket connected"); // add this
+    catchUpPendingOrders();
+  });
+  socket.on("order-request", (order) => {
+    console.log("[order-alert] order-request received:", order); // add this
+    alertForNewOrder(order);
+  });
   socket.on("order-status-updated", (order) => {
     if (order?._id && order.status !== "PendingConfirmation") markResolved(order._id);
   });
