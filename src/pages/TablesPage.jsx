@@ -28,30 +28,6 @@ const WHITE = "#fff";
 // ".../api", the socket needs the bare origin.
 const SOCKET_URL = (import.meta.env.VITE_API_URL || "").replace(/\/api\/?$/, "");
 
-// Short two-tone notification beep, synthesized via Web Audio — no audio
-// asset file needed.
-const playNotifySound = () => {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [880, 660].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.001, ctx.currentTime);
-      const start = ctx.currentTime + i * 0.18;
-      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.18);
-    });
-  } catch {
-    // Audio not available (e.g. autoplay policy before first user
-    // interaction) — non-fatal, the visual badge/toast still shows.
-  }
-};
-
 const STATUS_STYLE = {
   Empty:     { bg: WHITE,       border: "rgba(0,0,0,.15)", tc: "#b0aca6", label: "Free" },
   Placed:    { bg: "#dbeeff",   border: "#378ADD",         tc: "#185FA5", label: "Placed" },
@@ -869,18 +845,19 @@ export default function WaiterTablesPage() {
 
   useEffect(() => {
     fetchAll();
-    const iv = setInterval(fetchAll, 30000);
+    const iv = setInterval(fetchAll, 5000);
     return () => clearInterval(iv);
   }, [fetchAll]);
 
-  // Real-time: play a sound and refresh the instant a customer places (or
-  // cancels) a pending order, instead of waiting for the next 30s poll.
+  // Real-time: refresh the instant a customer places (or cancels) a pending
+  // order, instead of waiting for the next 30s poll. The sound/toast alert
+  // itself now lives in useOrderAlerts (mounted from BottomNav.jsx) so it
+  // keeps working on every page, not just this one — this listener only
+  // needs to keep the table map fresh.
   useEffect(() => {
     const socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
 
-    socket.on("order-request", (order) => {
-      playNotifySound();
-      toast(`New order request — Table ${order.tableNo ?? "-"} (${order.orderId})`, { icon: "🔔" });
+    socket.on("order-request", () => {
       fetchAll();
     });
     socket.on("order-status-updated", () => {
