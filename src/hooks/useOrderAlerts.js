@@ -7,8 +7,8 @@
 //     `skipConfirmation` branch and never fire it (see
 //     server/controllers/orderController.js placeOrder,
 //     ORDER_SOURCES_SKIP_CONFIRMATION). This is what guarantees Admin/
-//     Waiter-created orders never alert (case F) — no frontend filtering
-//     needed for that part.
+//     Waiter-created orders never alert — no frontend filtering needed for
+//     that part.
 //   - "order-status-updated" already fires on accept/decline (acceptOrder/
 //     declineOrder in the same file), used here only to keep the pending
 //     count accurate, not for alert logic.
@@ -36,30 +36,77 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { getAllOrders } from "../services/adminService.js";
-import chimeUrl from "../assets/ring.mp3";
 
 const SOCKET_URL = (import.meta.env.VITE_API_URL || "").replace(/\/api\/?$/, "");
-console.log("[order-alert] SOCKET_URL =", SOCKET_URL); // add this line
 const STORAGE_KEY = "adda_waiter_orderAlertsEnabled";
 
 let socket = null;
 let enabled = localStorage.getItem(STORAGE_KEY) === "1";
-// One persistent, reused <audio> element for the whole tab session, not a
-// fresh `new Audio()` per play. A play call worked once ("Enable" beep or
-// the first real order) but not again after that — a freshly constructed,
-// unreferenced Audio() object is a known gotcha: nothing else holds a
-// reference to it, so it's a candidate for GC before/while playing, and
-// some browsers' autoplay heuristics track "this element already played
-// with the user's blessing" per element rather than purely per origin.
-// Reusing one element sidesteps both.
-let audioEl = null;
-function getAudioEl() {
-  if (!audioEl) {
-    audioEl = new Audio(chimeUrl);
-    audioEl.preload = "auto";
-    audioEl.volume = 0.9;
+
+// ── Audio: pure Web Audio API (oscillator + gain), no mp3/audio file, no
+// network/decode dependency at all — nothing that can 404, fail to decode,
+// or otherwise be "broken." One persistent AudioContext for the whole tab
+// session — never recreated per play or per navigation, which is what made
+// earlier attempts play once and then go silent (a freshly-created context
+// starts "suspended" again under browser autoplay policy).
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Surfaced to the Waiter (not just devtools) if sound genuinely can't play
+// — throttled to once per "blocked" streak, reset the next time a play
+// actually succeeds, so it doesn't spam a toast per order.
+let audioBlockedWarned = false;
+function warnAudioBlocked() {
+  if (audioBlockedWarned) return;
+  audioBlockedWarned = true;
+  toast.error("🔇 Sound is blocked — tap \"Enable Order Alerts\" again.", { duration: 8000 });
+}
+
+// A bright ascending three-note bell chime (G5 → B5 → E6) — clearly
+// audible/noticeable like a doorbell/notification "ding-ding-ding!",
+// rather than a flat/harsh triple beep.
+const CHIME_NOTES = [
+  { freq: 784.0,  offset: 0 },    // G5
+  { freq: 987.8,  offset: 0.15 }, // B5
+  { freq: 1318.5, offset: 0.3 },  // E6
+];
+
+function playChime() {
+  try {
+    const ctx = getAudioCtx();
+    const start = () => {
+      const now = ctx.currentTime;
+      CHIME_NOTES.forEach(({ freq, offset }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.015);
+        // Slower decay than a flat beep — gives each note a "ring out"
+        // bell-like tail instead of cutting off abruptly.
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.4);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.42);
+      });
+      audioBlockedWarned = false;
+    };
+    if (ctx.state === "suspended") {
+      ctx.resume().then(start).catch((err) => {
+        console.warn("[order-alert] audio blocked:", err?.name || err);
+        warnAudioBlocked();
+      });
+    } else {
+      start();
+    }
+  } catch (err) {
+    console.warn("[order-alert] audio threw:", err);
+    warnAudioBlocked();
   }
-  return audioEl;
 }
 
 // Every order this tab session has ever accounted for (whether via a live
@@ -76,25 +123,10 @@ const notify = () => listeners.forEach((l) => l());
 const getEnabledSnapshot = () => enabled;
 const getPendingCountSnapshot = () => pendingOrderIds.size;
 
-function playChime() {
-  try {
-    const audio = getAudioEl();
-    audio.currentTime = 0; // restart even if a previous play is still finishing
-    const p = audio.play();
-    // Logged on every failure (not just the first) — if this is still
-    // broken, the exact browser error (e.g. NotAllowedError vs something
-    // else) needs to be visible for every attempt to actually diagnose it.
-    p?.catch?.((err) => {
-      console.warn("[order-alert] chime playback failed:", err?.name || err);
-    });
-  } catch (err) {
-    console.warn("[order-alert] chime playback threw:", err);
-  }
-}
-
 function enableAlertsGlobal() {
   // Runs inside a real click handler — required by browser autoplay policy
-  // to unlock audio for the rest of the tab session.
+  // to unlock the AudioContext for the rest of the tab session.
+  getAudioCtx().resume().catch(() => {});
   playChime(); // audible confirmation it's on
   localStorage.setItem(STORAGE_KEY, "1");
   enabled = true;
@@ -117,7 +149,9 @@ function markResolved(id) {
 
 // The one and only place that actually alerts (toast + sound) — gated by
 // the dedup guard, so a redelivered/duplicate event for the same id is a
-// guaranteed no-op.
+// guaranteed no-op. `id` is the order's Mongo _id — a reliable, unique,
+// server-assigned identifier — with orderId as a fallback only if _id is
+// ever missing from the payload.
 function alertForNewOrder(order) {
   const id = order?._id || order?.orderId;
   if (!id || seenOrderIds.has(id)) return;
@@ -147,25 +181,16 @@ function catchUpPendingOrders() {
 
 // Connects once for the whole tab session — safe to call from every
 // BottomNav mount, it's a no-op after the first real call, so remounting
-// on navigation can never create a second connection/listener set.
+// on navigation (or React re-rendering) can never create a second
+// connection/listener set.
 function ensureSocket() {
-  // if (socket || !SOCKET_URL) return;
-  // socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
-
-  // socket.on("connect", catchUpPendingOrders);
-  // socket.on("order-request", alertForNewOrder);
-    console.log("[order-alert] ensureSocket called, SOCKET_URL:", SOCKET_URL); // add this
   if (socket || !SOCKET_URL) return;
   socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
 
-  socket.on("connect", () => {
-    console.log("[order-alert] socket connected"); // add this
-    catchUpPendingOrders();
-  });
-  socket.on("order-request", (order) => {
-    console.log("[order-alert] order-request received:", order); // add this
-    alertForNewOrder(order);
-  });
+  // Fires on the very first connect AND every reconnect alike — both cases
+  // must treat already-known orders as already-known, never re-alert.
+  socket.on("connect", catchUpPendingOrders);
+  socket.on("order-request", alertForNewOrder);
   socket.on("order-status-updated", (order) => {
     if (order?._id && order.status !== "PendingConfirmation") markResolved(order._id);
   });
@@ -175,8 +200,8 @@ export function useOrderAlerts() {
   useEffect(() => {
     ensureSocket();
     // No cleanup/disconnect on unmount — the socket must survive
-    // BottomNav remounting on every page navigation. It lives for the
-    // whole tab session.
+    // BottomNav remounting on every page navigation/re-render. It lives
+    // for the whole tab session.
   }, []);
 
   const subscribe = useCallback((cb) => {
