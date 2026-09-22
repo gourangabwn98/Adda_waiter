@@ -366,11 +366,14 @@ function getCart() {
 }
 function saveCart(c) { sessionStorage.setItem("cart", JSON.stringify(c)); }
 
-// Parcel / Water / Gas items are exempt from service charge (matches
-// server/utils/serviceCharge.js).
-const SERVICE_CHARGE_EXEMPT_CATEGORIES = ["parcel", "water", "gas"];
-const isServiceChargeExempt = (category) =>
-  SERVICE_CHARGE_EXEMPT_CATEGORIES.includes(String(category || "").trim().toLowerCase());
+// Service charge applies only to the categories selected in Admin → Profile
+// → Pricing & delivery (matches server/utils/serviceCharge.js) — everything
+// else is exempt. `applicableCategoryNames` is that selection, resolved to
+// lowercased category names.
+const isServiceChargeApplicable = (category, applicableCategoryNames) => {
+  const normalized = String(category || "").trim().toLowerCase();
+  return !!normalized && (applicableCategoryNames || []).includes(normalized);
+};
 
 // ── fetch restaurant profile (service charge + GST) ───────────────────────────
 // ── fetch restaurant profile (service charge + GST) ───────────────────────────
@@ -410,6 +413,10 @@ export default function CartPage() {
   // ── service charge state ──────────────────────────────────────────────────
   const [serviceChargePerItem, setServiceChargePerItem] = useState(0);
   const [gstRate, setGstRate]                           = useState(0);
+  // Lowercased category names the service charge applies to (Admin →
+  // Profile → Pricing & delivery) — mirrors backend
+  // orderController.js computeOrderPricing for this live cart preview.
+  const [serviceChargeCategoryNames, setServiceChargeCategoryNames] = useState([]);
 
  useEffect(() => {
   getRestaurantProfile()
@@ -417,6 +424,12 @@ export default function CartPage() {
       const p = res.data?.data || res.data || {};
       setServiceChargePerItem(p?.serviceCharge || 0);
       setGstRate(p?.gstRate || 0);
+      setServiceChargeCategoryNames(
+        (p?.serviceChargeCategories || [])
+          .map((c) => (typeof c === "string" ? c : c?.name))
+          .filter(Boolean)
+          .map((n) => n.trim().toLowerCase()),
+      );
     })
     .catch(() => {});
 }, []);
@@ -445,11 +458,11 @@ export default function CartPage() {
   const subtotal         = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const totalQty         = cart.reduce((s, i) => s + i.qty, 0);
   const tax              = Math.round(subtotal * (gstRate / 100));
-  // Parcel / Water / Gas items are exempt from service charge (matches
+  // Only Admin-selected categories incur service charge (matches
   // server/utils/serviceCharge.js) — totalQty above stays the raw cart count
-  // used for display elsewhere; only the charge itself excludes these.
+  // used for display elsewhere; only the charge itself is filtered.
   const chargeableQty    = cart
-    .filter((i) => !isServiceChargeExempt(i.category))
+    .filter((i) => isServiceChargeApplicable(i.category, serviceChargeCategoryNames))
     .reduce((s, i) => s + i.qty, 0);
   const serviceChargeAmt = serviceChargePerItem * chargeableQty;
   const grandTotal       = subtotal + tax + serviceChargeAmt;
