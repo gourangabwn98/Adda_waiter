@@ -77,31 +77,39 @@ const CHIME_NOTES = [
 function playChime() {
   try {
     const ctx = getAudioCtx();
-    const start = () => {
-      const now = ctx.currentTime;
-      CHIME_NOTES.forEach(({ freq, offset }) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.0001, now + offset);
-        gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.015);
-        // Slower decay than a flat beep — gives each note a "ring out"
-        // bell-like tail instead of cutting off abruptly.
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.4);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(now + offset);
-        osc.stop(now + offset + 0.42);
-      });
-      audioBlockedWarned = false;
-    };
+    // Schedule the notes synchronously, unconditionally — never gated
+    // behind `ctx.resume().then(...)`. Desktop Chrome is lenient about
+    // this (works fine either way), but Android Chrome/WebViews are much
+    // stricter: they only count oscillator.start() as happening "inside
+    // the user gesture" if it's called synchronously in the same call
+    // stack as the click/tap. Scheduling it inside a resume() promise
+    // callback runs one tick later — outside that window — and can
+    // silently produce no sound on mobile even though the identical code
+    // works on desktop. Nodes can be created/started on a still-suspended
+    // context per spec; they just wait for resume() to actually render.
+    const now = ctx.currentTime;
+    CHIME_NOTES.forEach(({ freq, offset }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.45, now + offset + 0.015);
+      // Slower decay than a flat beep — gives each note a "ring out"
+      // bell-like tail instead of cutting off abruptly.
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.42);
+    });
+
     if (ctx.state === "suspended") {
-      ctx.resume().then(start).catch((err) => {
+      ctx.resume().then(() => { audioBlockedWarned = false; }).catch((err) => {
         console.warn("[order-alert] audio blocked:", err?.name || err);
         warnAudioBlocked();
       });
     } else {
-      start();
+      audioBlockedWarned = false;
     }
   } catch (err) {
     console.warn("[order-alert] audio threw:", err);
