@@ -802,19 +802,29 @@ export default function WaiterTablesPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [tablesRes, ordersRes, invoicesRes] = await Promise.all([
+      // Ask the backend for only active dining orders directly (status
+      // $in [...]) and the pending-confirmation queue separately, instead of
+      // fetching up to 200 orders of any status/type and filtering both out
+      // of that one list in the browser. Mirrors admin/TablesPage.jsx — each
+      // set is inherently small, so it stays fast no matter how much order
+      // history accumulates.
+      const [tablesRes, diningRes, pendingRes] = await Promise.all([
         getTables(),
-        getAllOrders({ limit: 200 }).catch(() => ({ data: { orders: [] } })),
-        getAllInvoices().catch(() => ({ data: { invoices: [] } })),
+        getAllOrders({
+          orderType: "Dining",
+          status: "Placed,Preparing,Ready,Delivered",
+          limit: 200,
+        }).catch(() => ({ data: { orders: [] } })),
+        getAllOrders({ status: "PendingConfirmation", limit: 100 }).catch(() => ({ data: { orders: [] } })),
       ]);
 
       const dbTables = tablesRes.data?.tables || tablesRes.data || [];
-      const orders = ordersRes?.data?.orders || [];
-      const invoices = invoicesRes?.data?.invoices || [];
+      const diningOrders = diningRes?.data?.orders || [];
+      const pendingOrders = pendingRes?.data?.orders || [];
 
       const oMap = {};
-      orders
-        .filter((o) => o.orderType === "Dining" && o.tableNo && !["Completed", "Cancelled", "PendingConfirmation"].includes(o.status))
+      diningOrders
+        .filter((o) => o.tableNo)
         .forEach((o) => {
           const key = Number(o.tableNo);
           if (!oMap[key]) oMap[key] = [];
@@ -824,6 +834,15 @@ export default function WaiterTablesPage() {
       for (const key of Object.keys(oMap)) {
         oMap[key].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       }
+
+      // Invoices tied to exactly these active dining orders — was previously
+      // the ENTIRE invoices collection, unbounded and fully populated,
+      // fetched every 30s and again after every Deliver/Payment/Print step.
+      const activeOrderIds = diningOrders.map((o) => o._id);
+      const invoicesRes = activeOrderIds.length
+        ? await getAllInvoices({ orderIds: activeOrderIds.join(",") }).catch(() => ({ data: { invoices: [] } }))
+        : { data: { invoices: [] } };
+      const invoices = invoicesRes?.data?.invoices || [];
 
       const iMap = {};
       invoices.forEach((inv) => {
@@ -840,7 +859,7 @@ export default function WaiterTablesPage() {
       setTables(dbTables.sort((a, b) => a.tableNo - b.tableNo));
       setTableOrdersMap(oMap);
       setInvoiceMap(iMap);
-      setPendingRequests(orders.filter((o) => o.status === "PendingConfirmation"));
+      setPendingRequests(pendingOrders);
     } catch {
       toast.error("Failed to load tables");
     } finally {
