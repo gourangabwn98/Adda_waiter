@@ -249,7 +249,7 @@ useEffect(() => {
                 <option value="" disabled>— Select waiter / chef —</option>
                 {chefs.map(c => (
                   <option key={c._id} value={c.phone}>
-                    {c.name}  •  +91 {c.phone}
+                    {c.name}  •  {c.role || "Waiter"}  •  +91 {c.phone}
                   </option>
                 ))}
               </select>
