@@ -34,14 +34,18 @@ export default function OrdersPage() {
   // once a chefId is on the logged-in user (set at login, LoginPage.jsx).
   const [myRevenue, setMyRevenue] = useState(null);
 
-  useEffect(() => {
+  // Re-fetched on every load()/Refresh and after a payment change here —
+  // includes Client orders this waiter accepted, which can be paid from
+  // elsewhere (Admin, another waiter's bill) while this page is open.
+  const loadRevenue = () => {
     if (!user?.chefId) return;
     getChefRevenue({ chefId: user.chefId })
       .then((r) => setMyRevenue(r.data?.chefs?.[0] || { cash: 0, online: 0, total: 0 }))
       .catch(() => setMyRevenue(null));
-  }, [user?.chefId]);
+  };
 
   const load = () => {
+    loadRevenue();
     setLoading(true);
     getMyOrders()
       .then((r) => {
@@ -66,6 +70,7 @@ export default function OrdersPage() {
       setOrders((prev) =>
         prev.map((o) => (o._id === id ? { ...o, paymentStatus: newPaymentStatus } : o)),
       );
+      loadRevenue();
       toast.success(`Payment → ${newPaymentStatus === "Pending" ? "Unpaid" : newPaymentStatus}`);
     } catch {
       toast.error("Payment status update failed");
@@ -78,6 +83,7 @@ export default function OrdersPage() {
       setOrders((prev) =>
         prev.map((o) => (o._id === id ? { ...o, paymentMethod: newPaymentMethod } : o)),
       );
+      loadRevenue();
       toast.success(`Payment method → ${newPaymentMethod}`);
     } catch {
       toast.error("Payment method update failed");
