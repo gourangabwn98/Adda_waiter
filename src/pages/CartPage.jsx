@@ -585,14 +585,14 @@ export default function CartPage() {
         ))}
 
         {/* Order-level note */}
- <div style={{ fontWeight: 700, fontSize: 14, color: "#333", marginBottom: 6 }}>
+        {/* <div style={{ fontWeight: 700, fontSize: 14, color: "#333", marginBottom: 6 }}>
             Order Note
           </div>
           <textarea value={orderNote} onChange={(e) => setOrderNote(e.target.value)}
             rows={2} placeholder="Any note for the kitchen / bar…"
             style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px",
               borderRadius: 12, border: "1px solid #e0e0e0", fontSize: 13,
-              outline: "none", resize: "none" }} />
+              outline: "none", resize: "none" }} /> */}
         </div>
 
         {/* Payment method */}
