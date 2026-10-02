@@ -5,7 +5,7 @@
 // import { printKOTs } from "../utils/kotPrint.js";
 // import BottomNav from "../components/BottomNav.jsx";
 // import toast from "react-hot-toast";
-
+//demo
 // const PINK = "#e91e8c";
 
 // function getCart() {
